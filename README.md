@@ -1,120 +1,106 @@
-# CICD Demo - Jenkins, SonarQube, Trivy y Docker
+# Taller CI/CD - Jenkins, SonarQube, Trivy y Docker
 
-Proyecto Java/Spring Boot usado para el ejercicio de diseño y construccion de pipelines. El flujo definido en `Jenkinsfile` compila, prueba, analiza calidad, escanea vulnerabilidades de contenedor y despliega la aplicacion localmente con Docker.
+Este repositorio contiene la entrega del taller de diseno y construccion de pipelines. Se trabajo sobre una aplicacion Java/Spring Boot y se configuro un flujo de CI/CD en Jenkins para compilar, probar, analizar calidad, construir una imagen Docker y validar seguridad antes del despliegue.
 
-## Flujo del Pipeline
+La aplicacion expone una pagina simple en `http://localhost/` con el titulo del taller y datos del contenedor en ejecucion.
 
-El pipeline declarativo ejecuta estas etapas:
+## Herramientas usadas
 
-1. `Checkout`: obtiene el codigo desde el repositorio configurado en Jenkins con `Pipeline script from SCM`.
-2. `Build & Test`: ejecuta `mvn clean verify`, publica resultados JUnit y archiva el `.jar`.
-3. `Static Analysis (SonarQube)`: envia el analisis a SonarQube con `mvn sonar:sonar`.
-4. `Quality Gate (SonarQube)`: detiene el despliegue si falla la puerta de calidad.
+- Jenkins ejecutandose en Docker.
+- SonarQube local para analisis estatico.
+- Trivy instalado en el agente Jenkins para escaneo de vulnerabilidades.
+- Docker para construir y ejecutar la imagen de la aplicacion.
+- Maven ejecutado desde contenedores, por lo que no es necesario instalar Java/Maven directamente en Windows.
+
+## Flujo configurado
+
+El `Jenkinsfile` define estas etapas:
+
+1. `Checkout`: descarga el codigo desde GitHub usando `Pipeline script from SCM`.
+2. `Build & Test`: ejecuta `mvn clean verify` y excluye la prueba Selenium porque requiere un contenedor adicional.
+3. `Static Analysis (SonarQube)`: publica el analisis en SonarQube con el proyecto `mi-app`.
+4. `Quality Gate (SonarQube)`: detiene el pipeline si la puerta de calidad falla.
 5. `Docker Build`: construye la imagen `mi-app:latest`.
-6. `Container Security Scan (Trivy)`: falla el pipeline si Trivy encuentra vulnerabilidades `CRITICAL`.
-7. `Deploy`: en ramas `main` o `master`, despliega el contenedor con `docker run -d --name mi-app -p 80:80 mi-app:latest`.
+6. `Container Security Scan (Trivy)`: escanea la imagen con Trivy y falla si encuentra vulnerabilidades `CRITICAL`.
+7. `Deploy`: despliega la imagen localmente en el puerto `80` cuando las validaciones pasan.
 
-El bloque `post` limpia recursos Docker no usados, borra el workspace y detiene el contenedor si la ejecucion falla.
+El bloque `post` limpia el workspace, elimina recursos Docker no usados y reporta si el pipeline fallo.
 
-## Levantar Jenkins y SonarQube
+## Infraestructura local
 
-Desde la carpeta del proyecto:
+Para levantar Jenkins y SonarQube:
 
 ```bash
 cd jenkins
 docker compose -f docker-compose.local.yml up -d --build
 ```
 
-Servicios:
+Servicios usados:
 
-- Jenkins: http://localhost:8080
-- SonarQube: http://localhost:9000
+- Jenkins: `http://localhost:8080`
+- SonarQube: `http://localhost:9000`
 
-En SonarQube inicia sesion con `admin/admin`, cambia la clave cuando lo solicite y genera un token para Jenkins.
+El contenedor de Jenkins se construyo con Docker CLI y Trivy para poder ejecutar `docker build`, `docker run` y `trivy image` desde el pipeline.
 
-## Configuracion de Jenkins
+## Configuracion realizada en Jenkins
 
-Instala o valida estos plugins:
+Plugins instalados o validados:
 
 - Git
 - Pipeline
-- Docker
+- Docker / Docker Pipeline
 - SonarQube Scanner for Jenkins
 - Workspace Cleanup
 
-Configura SonarQube en Jenkins:
+Configuracion de SonarQube:
 
-1. Ve a `Manage Jenkins > System > SonarQube servers`.
-2. Agrega un servidor con nombre exacto `SonarQube`.
-3. Usa URL `http://sonarqube:9000`.
-4. Agrega el token de SonarQube como credencial secreta.
+- Nombre del servidor en Jenkins: `SonarQube`
+- URL interna: `http://sonarqube:9000`
+- Token guardado como credencial secreta en Jenkins.
+- Webhook en SonarQube: `http://jenkins:8080/sonarqube-webhook/`
 
-En SonarQube agrega un webhook en `Administration > Configuration > Webhooks`:
+El job de Jenkins se configuro como `Pipeline script from SCM`, apuntando al repositorio de GitHub y al archivo `Jenkinsfile`.
 
-```text
-http://jenkins:8080/sonarqube-webhook/
-```
+## Seguridad y gatekeeping
 
-El `Jenkinsfile` usa la red Docker `jenkins_default`, creada por `docker compose` al levantar `jenkins/docker-compose.local.yml`. Si cambias el nombre del proyecto de Compose, actualiza la variable `DOCKER_NETWORK` del pipeline.
+El pipeline tiene dos controles antes del despliegue:
 
-Crea el job:
-
-1. `New Item > Pipeline`.
-2. En `Pipeline`, selecciona `Pipeline script from SCM`.
-3. SCM: `Git`.
-4. Repository URL: URL de tu repositorio GitHub o ruta del repo local.
-5. Branch: `*/master` o `*/main`.
-6. Script Path: `Jenkinsfile`.
-
-Como alternativa, puedes usar `jenkins/job-config.xml` como export base del job y ajustar la URL del repositorio si trabajas con un fork propio.
-
-## Gatekeeping
-
-Para que el despliegue falle por seguridad:
-
-- En SonarQube, configura una Quality Gate que falle ante Security Hotspots o ratings de seguridad insuficientes.
-- En Jenkins, la etapa `Quality Gate (SonarQube)` usa `waitForQualityGate abortPipeline: true`.
-- Trivy se ejecuta dentro del agente Jenkins con `trivy image`, escanea paquetes del sistema operativo y dependencias Java de la imagen, y usa AWS ECR como mirror de Java DB para reducir fallos de descarga.
-
-## Validacion Local
-
-No necesitas instalar Java ni Maven en Windows. Para compilar y probar usa Maven desde Docker:
+- SonarQube bloquea el flujo si falla el `Quality Gate`.
+- Trivy bloquea el flujo si encuentra vulnerabilidades criticas:
 
 ```bash
-docker run --rm -v "$PWD":/workspace -v "$HOME/.m2":/root/.m2 -w /workspace maven:3.8.8-eclipse-temurin-11 mvn clean verify -DexcludedGroups=au.com.equifax.cicddemo.domain.SystemTest
+trivy image --severity CRITICAL --exit-code 1 mi-app:latest
 ```
 
-La prueba Selenium queda excluida del build principal porque requiere un contenedor adicional llamado `selenium`; para el taller se validan las pruebas unitarias e integracion del pipeline.
+Durante la ejecucion del taller, Trivy encontro vulnerabilidades criticas en dependencias Java dentro de `app.jar`, por lo que el despliegue se detuvo correctamente. Esto valida el comportamiento esperado del gate de seguridad.
 
-Construir imagen:
+## Validacion local de la aplicacion
+
+Para compilar sin instalar Maven localmente:
+
+```bash
+docker run --rm -v "$PWD":/workspace -w /workspace maven:3.8.8-eclipse-temurin-11 mvn clean verify -DexcludedGroups=au.com.equifax.cicddemo.domain.SystemTest
+```
+
+Para construir y ejecutar la imagen:
 
 ```bash
 docker build -t mi-app:latest .
-```
-
-Ejecutar aplicacion:
-
-```bash
 docker rm -f mi-app || true
 docker run -d --name mi-app -p 80:80 mi-app:latest
 ```
 
-Validar:
+Luego abrir:
 
-```bash
-curl http://localhost/
+```text
+http://localhost/
 ```
 
-La respuesta incluye el mensaje:
+## Archivos principales modificados
 
-```json
-"message":"Pipeline Jenkins CI/CD actualizado con SonarQube y Trivy"
-```
-
-## Entregables Sugeridos
-
-- Export del job de Jenkins o captura del XML/configuracion del job.
-- Pantallazos de plugins, configuracion de SonarQube y job `Pipeline script from SCM`.
-- Capturas de ejecucion del pipeline con etapas exitosas y gates aplicados.
-- Captura de la aplicacion en `http://localhost/`.
-- Codigo fuente modificado: `Jenkinsfile`, `Dockerfile`, `.dockerignore`, `README.md`, `jenkins/Dockerfile`, `jenkins/docker-compose.local.yml`, `jenkins/job-config.xml` y clases Java actualizadas.
+- `Jenkinsfile`: definicion completa del pipeline.
+- `Dockerfile`: imagen de ejecucion de la app en el puerto `80`.
+- `jenkins/Dockerfile`: Jenkins con Docker CLI y Trivy.
+- `jenkins/docker-compose.local.yml`: servicios locales de Jenkins y SonarQube.
+- `src/main/java/au/com/equifax/cicddemo/controller/ApiController.java`: pagina de inicio personalizada para el taller.
+- `pom.xml`: ajustes de Java/Jacoco para ejecutar el proyecto en el entorno actual.
