@@ -79,7 +79,9 @@ pipeline {
                 sh '''
                     docker run --rm \
                       -v /var/run/docker.sock:/var/run/docker.sock \
+                      -v trivy_cache:/root/.cache/trivy \
                       aquasec/trivy:latest image \
+                      --timeout 20m \
                       --severity CRITICAL \
                       --exit-code 1 \
                       --ignore-unfixed \
