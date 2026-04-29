@@ -54,7 +54,7 @@ pipeline {
                           -Dsonar.projectKey=mi-app \
                           -Dsonar.projectName=mi-app \
                           -Dsonar.host.url=${SONAR_HOST_URL} \
-                          -Dsonar.token=${SONAR_AUTH_TOKEN}
+                          -Dsonar.login=${SONAR_AUTH_TOKEN}
                     '''
                 }
             }
