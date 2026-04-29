@@ -28,7 +28,6 @@ pipeline {
                 sh '''
                     docker run --rm \
                       --volumes-from ${JENKINS_CONTAINER} \
-                      -v maven_cache:/root/.m2 \
                       -w "$PWD" \
                       ${MAVEN_IMAGE} mvn clean verify -DexcludedGroups=au.com.equifax.cicddemo.domain.SystemTest
                 '''
@@ -50,7 +49,6 @@ pipeline {
                           -e SONAR_HOST_URL \
                           -e SONAR_AUTH_TOKEN \
                           --volumes-from ${JENKINS_CONTAINER} \
-                          -v maven_cache:/root/.m2 \
                           -w "$PWD" \
                           ${MAVEN_IMAGE} mvn sonar:sonar \
                           -Dsonar.projectKey=mi-app \
