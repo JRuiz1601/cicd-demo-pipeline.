@@ -74,7 +74,7 @@ Para que el despliegue falle por seguridad:
 
 - En SonarQube, configura una Quality Gate que falle ante Security Hotspots o ratings de seguridad insuficientes.
 - En Jenkins, la etapa `Quality Gate (SonarQube)` usa `waitForQualityGate abortPipeline: true`.
-- Trivy se ejecuta como contenedor oficial con `aquasec/trivy:latest` y devuelve error si hay vulnerabilidades criticas.
+- Trivy se ejecuta dentro del agente Jenkins con `trivy image` y devuelve error si hay vulnerabilidades criticas.
 
 ## Validacion Local
 

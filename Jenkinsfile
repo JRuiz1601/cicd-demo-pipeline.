@@ -77,10 +77,8 @@ pipeline {
         stage('Container Security Scan (Trivy)') {
             steps {
                 sh '''
-                    docker run --rm \
-                      -v /var/run/docker.sock:/var/run/docker.sock \
-                      -v trivy_cache:/root/.cache/trivy \
-                      aquasec/trivy:latest image \
+                    trivy image \
+                      --cache-dir /var/jenkins_home/.cache/trivy \
                       --db-repository ghcr.io/aquasecurity/trivy-db:2 \
                       --timeout 20m \
                       --no-progress \

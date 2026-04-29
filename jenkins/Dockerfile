@@ -1,3 +1,5 @@
+FROM aquasec/trivy:latest AS trivy
+
 FROM jenkins/jenkins:lts
 
 USER root
@@ -13,5 +15,7 @@ RUN apt-get update \
     && mv /tmp/docker/docker /usr/local/bin/docker \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/docker /tmp/docker.tgz
+
+COPY --from=trivy /usr/local/bin/trivy /usr/local/bin/trivy
 
 USER jenkins
