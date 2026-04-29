@@ -17,6 +17,7 @@ public class ApiController {
         env.setHostname(inetAddress.getHostName());
         env.setIp(inetAddress.getHostAddress());
         env.setOs(System.getProperty("os.name"));
+        env.setMessage("Pipeline Jenkins CI/CD actualizado con SonarQube y Trivy");
         return env;
     }
 }

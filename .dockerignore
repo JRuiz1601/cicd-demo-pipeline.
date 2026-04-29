@@ -1,0 +1,5 @@
+target/surefire-reports
+target/failsafe-reports
+target/site
+.git
+.env

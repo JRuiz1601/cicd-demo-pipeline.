@@ -4,6 +4,7 @@ public class EnvDetail {
     private String ip;
     private String hostname;
     private String os;
+    private String message;
 
     public String getIp() {
         return ip;
@@ -27,5 +28,13 @@ public class EnvDetail {
 
     public void setOs(String os) {
         this.os = os;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 }
