@@ -81,7 +81,9 @@ pipeline {
                       -v /var/run/docker.sock:/var/run/docker.sock \
                       -v trivy_cache:/root/.cache/trivy \
                       aquasec/trivy:latest image \
+                      --db-repository ghcr.io/aquasecurity/trivy-db:2 \
                       --timeout 20m \
+                      --no-progress \
                       --severity CRITICAL \
                       --exit-code 1 \
                       --ignore-unfixed \
