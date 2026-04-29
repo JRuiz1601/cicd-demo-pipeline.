@@ -80,8 +80,8 @@ pipeline {
                     trivy image \
                       --cache-dir /var/jenkins_home/.cache/trivy \
                       --db-repository ghcr.io/aquasecurity/trivy-db:2 \
+                      --java-db-repository ghcr.io/aquasecurity/trivy-java-db:1 \
                       --scanners vuln \
-                      --pkg-types os \
                       --timeout 20m \
                       --no-progress \
                       --severity CRITICAL \
